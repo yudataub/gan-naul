@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="he" dir="rtl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>דף מוגן – הקול החמישי</title>
+<meta name="description" content="דף מוגן בקוד גישה.">
+<style>
+:root{--bg:#f6f3fb;--card:#fff;--ink:#1f2937;--muted:#6b7280;--acc:#6d28d9}
+@media (prefers-color-scheme:dark){:root{--bg:#15131c;--card:#221f2c;--ink:#ece8f6;--muted:#a49cbb;--acc:#a78bfa}}
+body{margin:0;min-height:100vh;display:grid;place-items:center;background:var(--bg);color:var(--ink);font:17px/1.6 Heebo,Arial,sans-serif}
+form{background:var(--card);padding:30px 26px;border-radius:16px;box-shadow:0 8px 30px rgba(0,0,0,.12);width:min(360px,92vw);text-align:center}
+h1{margin:0 0 6px;font-size:24px} p{margin:0 0 18px;color:var(--muted);font-size:15px}
+input{width:100%;box-sizing:border-box;padding:12px 14px;font-size:18px;border:2px solid #d8cff0;border-radius:10px;text-align:center;direction:ltr}
+button{margin-top:14px;width:100%;padding:12px;font-size:17px;font-weight:700;border:0;border-radius:10px;background:var(--acc);color:#fff;cursor:pointer}
+#e{color:#dc2626;min-height:24px;margin-top:10px;font-size:15px}
+a{color:var(--acc);font-size:14px}
+</style></head><body>
+<form id="f" autocomplete="off">
+<h1>🔒 דף מוגן</h1><p>הכניסו את קוד הגישה</p>
+<input id="k" type="password" autofocus aria-label="קוד גישה">
+<button>כניסה</button><div id="e"></div>
+<a href="https://www.kol-toda.co.il/">← לאתר הקול החמישי</a>
+</form>
+<script>
+(() => {  // own scope: the decrypted page is written into this same document and may declare its own D, go …
+const D = {"s": "Yz3+m958sJtnjKQY/WSpAQ==", "i": "BH7ZTepPXeG5WH3p", "c": "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", "r": 600000};
+const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+async function open_(code) {
+  const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(code), "PBKDF2", false, ["deriveKey"]);
+  const key = await crypto.subtle.deriveKey({name: "PBKDF2", salt: b64(D.s), iterations: D.r, hash: "SHA-256"},
+                                             base, {name: "AES-GCM", length: 256}, false, ["decrypt"]);
+  const pt = await crypto.subtle.decrypt({name: "AES-GCM", iv: b64(D.i)}, key, b64(D.c));
+  return new TextDecoder().decode(pt);
+}
+async function go(code, quiet) {
+  const e = document.getElementById("e");
+  if (!quiet) e.textContent = "פותח…";
+  try {
+    const page = await open_(code);
+    try { sessionStorage.setItem("kz", code); } catch (_) {}
+    document.open(); document.write(page); document.close();
+  } catch (_) {
+    try { sessionStorage.removeItem("kz"); } catch (_) {}
+    if (!quiet) e.textContent = "קוד שגוי";
+  }
+}
+if (!window.crypto || !crypto.subtle) document.getElementById("e").textContent = "הדפדפן לא תומך בפתיחת הדף";
+document.getElementById("f").addEventListener("submit", ev => { ev.preventDefault(); go(document.getElementById("k").value.trim()); });
+let saved = null; try { saved = sessionStorage.getItem("kz"); } catch (_) {}
+if (saved) go(saved, true);
+})();
+</script>
+</body></html>
