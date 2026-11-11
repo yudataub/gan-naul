@@ -95,7 +95,7 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
 
 // ---------- the sealed library (catalog-kit/build_locked_bot.py): one blob, one key - the same code as every z/ page
-let L = null, PN = [], TN = [];
+let L = null, PN = [], TN = [], VEC = null, PM = null, PC = null;
 const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
 async function openLibrary(code) {
   const D = await fetch("https://yudataub.github.io/z-files/bot-data.json", {cache: "no-cache"}).then(r => r.json());
@@ -107,6 +107,12 @@ async function openLibrary(code) {
   L = JSON.parse(text);
   for (let i = 0; i < L.p.length; i++) PN[i] = norm(L.p[i][1]);
   for (let i = 0; i < L.docs.length; i++) TN[i] = norm(L.docs[i].t);
+  if (L.vec && L.pca) {   // the meaning search (11.11): int8 vectors of the passages, PCA-cut (build_locked_bot.py vectors())
+    const f32 = s => { const u = b64(s); return new Float32Array(u.buffer, u.byteOffset, u.length / 4); };
+    const u = b64(L.vec);
+    VEC = new Int8Array(u.buffer, u.byteOffset, u.length); PM = f32(L.pca.mean); PC = f32(L.pca.comp);
+    delete L.vec;
+  }
 }
 $("lf").addEventListener("submit", async e => {
   e.preventDefault();
@@ -162,6 +168,31 @@ function score(isLoose, words, q) {
   }
   return out;
 }
+// ---------- searching by meaning (11.11): only the question goes to the worker (L.emb, a token sealed in the library),
+// which turns it into a bge-m3 vector; it is cut like the passages (PCA) and compared here with every passage
+const QV = new Map();
+async function meaning(query, area) {
+  if (!VEC || !L.emb) return null;
+  let v = QV.get(query);
+  if (!v) {
+    const r = await fetch(L.emb.url, {method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({t: L.emb.t, texts: [query], kind: "q", m: L.emb.m})}).then(x => x.json());
+    if (!r.v || !r.v[0]) return null;
+    const e = r.v[0], D = L.pca.d, N = PM.length, y = new Float32Array(D);
+    for (let k = 0; k < D; k++) { let s = 0; const o = k * N; for (let j = 0; j < N; j++) s += (e[j] - PM[j]) * PC[o + j]; y[k] = s; }
+    let n = 0; for (let k = 0; k < D; k++) n += y[k] * y[k]; n = Math.sqrt(n) || 1;
+    for (let k = 0; k < D; k++) y[k] /= n;
+    QV.set(query, v = y);
+  }
+  const D = v.length, out = [];
+  for (let r = 0; r < L.vi.length; r++) {
+    const i = L.vi[r];
+    if (area && L.docs[L.p[i][0]].a !== area) continue;
+    let s = 0; const o = r * D; for (let k = 0; k < D; k++) s += v[k] * VEC[o + k];
+    out.push([i, s / 127]);
+  }
+  return out.sort((a, b) => b[1] - a[1]).slice(0, 40);
+}
 const REF = {}, REFOF = {}; let nRef = 0;
 function ref(u) { if (!REFOF[u]) { REFOF[u] = "r" + ++nRef; REF[REFOF[u]] = u; } return REFOF[u]; }
 function excerpt(i, words) {
@@ -170,23 +201,36 @@ function excerpt(i, words) {
   const from = Math.max(0, Math.round(at / Math.max(1, n.length) * raw.length) - 150);
   return (from ? "…" : "") + raw.slice(from, from + 420).replace(/\s+/g, " ") + (from + 420 < raw.length ? "…" : "");
 }
-function searchLibrary({query, area}) {
-  let q = norm(String(query || "").slice(0, 100));
+async function searchLibrary({query, area}) {
+  let q = norm(String(query || "").slice(0, 200));
   let words = q.split(" ").filter(w => w && !STOP.has(w));
   if (!words.length) return {error: "שאילתה ריקה"};
-  let res = score(false, words, q);
-  if (res.length < 5) {
+  if (area && !L.areas[area]) area = "";
+  // by words (every word in the passage or in its title) – only for short queries; a whole question is left to meaning
+  let res = words.length <= 5 ? score(false, words, q) : [];
+  if (words.length <= 5 && res.length < 5) {
     const lw = words.map(loose), seen = new Set(res.map(x => x[0]));
     res = res.concat(score(true, lw, loose(q)).filter(x => !seen.has(x[0])));
   }
-  if (area && L.areas[area]) res = res.filter(x => L.docs[L.p[x[0]][0]].a === area);
+  if (area) res = res.filter(x => L.docs[L.p[x[0]][0]].a === area);
   res.sort((a, b) => b[1] - a[1]);
+  // by meaning, and the two lists merged by rank (reciprocal rank fusion)
+  let sem = null; try { sem = await meaning(String(query).slice(0, 300), area); } catch (_) {}
+  const fused = new Map(), how = new Map();
+  res.slice(0, 60).forEach(([i], r) => { fused.set(i, 1 / (40 + r)); how.set(i, "מילים"); });
+  (sem || []).forEach(([i, cos], r) => {
+    if (cos < 0.25) return;
+    fused.set(i, (fused.get(i) || 0) + 1 / (40 + r));
+    how.set(i, how.has(i) ? "מילים+משמעות" : "משמעות");
+  });
+  const order = [...fused.entries()].sort((a, b) => b[1] - a[1]).map(x => x[0]);
   // at most 3 passages of one book, so one long book does not fill the answer
   const per = {}, top = [];
-  for (const [i] of res) { const d = L.p[i][0]; if ((per[d] = (per[d] || 0) + 1) > 3) continue; top.push(i); if (top.length >= 10) break; }
-  return {query, found_passages: res.length,
-    results: top.map(i => { const d = L.docs[L.p[i][0]]; return {passage: "p" + i, source: d.t, area: L.areas[d.a], link: ref(d.u), excerpt: excerpt(i, words)}; }),
-    how_to_use: "לקריאת קטע מלא: read_passage עם מזהה ה-passage. קישור למקור כותבים כך: [שם המקור](r12) – בדיוק המזהה שבשדה link."};
+  for (const i of order) { const d = L.p[i][0]; if ((per[d] = (per[d] || 0) + 1) > 3) continue; top.push(i); if (top.length >= 10) break; }
+  return {query, found_by_words: res.length, meaning_search: sem ? "on" : "off",
+    results: top.map(i => { const d = L.docs[L.p[i][0]]; return {passage: "p" + i, source: d.t, area: L.areas[d.a], link: ref(d.u), match: how.get(i), excerpt: excerpt(i, words)}; }),
+    how_to_use: "match: מילים = המילים נמצאו בקטע; משמעות = הקטע קרוב בתוכן לשאלה (לא תמיד באותן מילים) – קרא אותו לפני שמסתמכים עליו. " +
+      "לקריאת קטע מלא: read_passage עם מזהה ה-passage. קישור למקור כותבים כך: [שם המקור](r12) – בדיוק המזהה שבשדה link."};
 }
 function readPassage({passage, more}) {
   const i = parseInt(String(passage || "").replace(/^p/, ""), 10);
@@ -318,7 +362,7 @@ async function ask(text) {
         const f = TOOLS[u.name];
         steps.push(u.name === "search_library" ? "🔎 " + esc(u.input?.query || "") : "📖 " + esc((L.docs[L.p[+String(u.input?.passage || "").slice(1)]?.[0]]?.t || "קורא").slice(0, 40)));
         box.innerHTML = stepsHtml(u.name === "search_library" ? "מחפש בספרייה" : "קורא");
-        let res; try { res = f ? f(u.input || {}) : {error: "אין כלי כזה"}; } catch (e) { res = {error: "הפעולה נכשלה"}; }
+        let res; try { res = f ? await f(u.input || {}) : {error: "אין כלי כזה"}; } catch (e) { res = {error: "הפעולה נכשלה"}; }
         results.push({type: "tool_result", tool_use_id: u.id, content: JSON.stringify(res)});
       }
       convo.push({role: "user", content: results});
