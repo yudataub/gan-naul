@@ -114,7 +114,8 @@ $("lf").addEventListener("submit", async e => {
   $("lb").disabled = true; $("lerr").textContent = "פותח את הספרייה…";
   try {
     await openLibrary(code);
-    try { sessionStorage.setItem("kz", code); } catch (_) {}
+    // "kz" for the gan-naul pages, "kv" for the veahavta and podcasts sites (same origin, the same code; 11.11)
+    try { sessionStorage.setItem("kz", code); sessionStorage.setItem("kv", code); } catch (_) {}
     start();
   } catch (err) {
     $("lerr").textContent = "הקוד שגוי"; $("lb").disabled = false;
@@ -131,7 +132,7 @@ function start() {
   let code = ""; try { code = sessionStorage.getItem("kz") || ""; } catch (_) {}
   if (!code) return;
   $("lerr").textContent = "פותח את הספרייה…";
-  try { await openLibrary(code); start(); } catch (_) { $("lerr").textContent = ""; }
+  try { await openLibrary(code); try { sessionStorage.setItem("kv", code); } catch (_) {} start(); } catch (_) { $("lerr").textContent = ""; }
 })();
 
 // ---------- searching the passages (the same spelling rules as the site search)
@@ -201,8 +202,9 @@ function inline(s) {
   let h = esc(s);
   // a locked page opens in a new tab WITH the opener (rel="opener"): only then does the browser copy this tab's
   // sessionStorage – the code ("kz") – to the new tab, so the page opens without asking for the code again (1.11).
-  // Other sites (Gamma, the veahavta site) keep noopener; they have their own code anyway.
-  const relOf = u => u.startsWith(location.origin + "/z/") ? "opener" : "noopener";
+  // 11.11: the library moved to yudataub.github.io/gan-naul/, the same origin as the veahavta and podcasts sites
+  // (their lock reads "kv", set on unlock above) – so all three open with the opener. Gamma keeps noopener.
+  const relOf = u => /^https:\/\/yudataub\.github\.io\/(gan-naul|veahavta|podcasts)\//.test(u) ? "opener" : "noopener";
   h = h.replace(/\[([^\]]+)\]\(\s*(r\d+)\s*\)/g, (m, t, id) => REF[id] ? `<a href="${esc(REF[id])}" target="_blank" rel="${relOf(REF[id])}">${t}</a>` : t);
   h = h.replace(/\[([^\]]+)\]\(\s*https?:\/\/[^)]*\)/g, "$1");
   return h.replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>");
