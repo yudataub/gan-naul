@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="he" dir="rtl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>דף מוגן – הקול החמישי</title>
+<meta name="description" content="דף מוגן בקוד גישה.">
+<style>
+:root{--bg:#f6f3fb;--card:#fff;--ink:#1f2937;--muted:#6b7280;--acc:#6d28d9}
+@media (prefers-color-scheme:dark){:root{--bg:#15131c;--card:#221f2c;--ink:#ece8f6;--muted:#a49cbb;--acc:#a78bfa}}
+body{margin:0;min-height:100vh;display:grid;place-items:center;background:var(--bg);color:var(--ink);font:17px/1.6 Heebo,Arial,sans-serif}
+form{background:var(--card);padding:30px 26px;border-radius:16px;box-shadow:0 8px 30px rgba(0,0,0,.12);width:min(360px,92vw);text-align:center}
+h1{margin:0 0 6px;font-size:24px} p{margin:0 0 18px;color:var(--muted);font-size:15px}
+input{width:100%;box-sizing:border-box;padding:12px 14px;font-size:18px;border:2px solid #d8cff0;border-radius:10px;text-align:center;direction:ltr}
+button{margin-top:14px;width:100%;padding:12px;font-size:17px;font-weight:700;border:0;border-radius:10px;background:var(--acc);color:#fff;cursor:pointer}
+#e{color:#dc2626;min-height:24px;margin-top:10px;font-size:15px}
+a{color:var(--acc);font-size:14px}
+</style></head><body>
+<form id="f" autocomplete="off">
+<h1>🔒 דף מוגן</h1><p>הכניסו את קוד הגישה</p>
+<input id="k" type="password" autofocus aria-label="קוד גישה">
+<button>כניסה</button><div id="e"></div>
+<a href="https://www.kol-toda.co.il/">← לאתר הקול החמישי</a>
+</form>
+<script>
+(() => {  // own scope: the decrypted page is written into this same document and may declare its own D, go …
+const D = {"s": "5upCwHkp2YLaZlvyviL+IQ==", "i": "je3M7zQ/u2kxBB59", "c": "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", "r": 600000};
+const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+async function open_(code) {
+  const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(code), "PBKDF2", false, ["deriveKey"]);
+  const key = await crypto.subtle.deriveKey({name: "PBKDF2", salt: b64(D.s), iterations: D.r, hash: "SHA-256"},
+                                             base, {name: "AES-GCM", length: 256}, false, ["decrypt"]);
+  const pt = await crypto.subtle.decrypt({name: "AES-GCM", iv: b64(D.i)}, key, b64(D.c));
+  return new TextDecoder().decode(pt);
+}
+async function go(code, quiet) {
+  const e = document.getElementById("e");
+  if (!quiet) e.textContent = "פותח…";
+  try {
+    const page = await open_(code);
+    try { sessionStorage.setItem("kz", code); } catch (_) {}
+    document.open(); document.write(page); document.close();
+  } catch (_) {
+    try { sessionStorage.removeItem("kz"); } catch (_) {}
+    if (!quiet) e.textContent = "קוד שגוי";
+  }
+}
+if (!window.crypto || !crypto.subtle) document.getElementById("e").textContent = "הדפדפן לא תומך בפתיחת הדף";
+document.getElementById("f").addEventListener("submit", ev => { ev.preventDefault(); go(document.getElementById("k").value.trim()); });
+let saved = null; try { saved = sessionStorage.getItem("kz"); } catch (_) {}
+if (saved) go(saved, true);
+})();
+</script>
+</body></html>
